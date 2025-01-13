@@ -1,7 +1,8 @@
 const express = require("express");
 const firebaseAdmin = require("firebase-admin");
 const cors = require("cors");
-const dotenv = require("dotenv");  // Ajouter dotenv
+const dotenv = require("dotenv");
+const firebaseAuth = require("firebase-admin").auth;
 const app = express();
 const port = 3000;
 
@@ -12,7 +13,7 @@ dotenv.config();
 const serviceAccount = {
   type: "service_account",
   projectId: process.env.PROJECT_ID,
-  privateKey: process.env.PRIVATE_KEY.replace(/\\n/g, '\n'),  // Remplacer les \n par des sauts de ligne
+  privateKey: process.env.PRIVATE_KEY.replace(/\\n/g, '\n'),
   clientEmail: process.env.CLIENT_EMAIL,
   clientId: process.env.CLIENT_ID,
   authUri: process.env.AUTH_URI,
@@ -25,21 +26,29 @@ firebaseAdmin.initializeApp({
   credential: firebaseAdmin.credential.cert(serviceAccount),
 });
 
-// Middleware
+
 app.use(cors());
-app.use(express.json()); // pour pouvoir traiter les données JSON
+app.use(express.json());
 
 // Endpoint pour se connecter
 app.post("/login", async (req, res) => {
-  const { idToken } = req.body; // Le token Firebase envoyé depuis le frontend
+  const { idToken, email, password } = req.body;
 
   try {
-    // Vérification du token ID envoyé par le frontend
-    const decodedToken = await firebaseAdmin.auth().verifyIdToken(idToken);
-    const uid = decodedToken.uid;
-    res.status(200).send({ message: "Authentification réussie", uid });
+    if (email && password) {
+        const userRecord = await firebaseAdmin.auth().getUserByEmail(email);
+        return res.status(200).send({ message: "Authentification réussie avec email et mot de passe", uid: userRecord.uid });
+    }
+    
+    if (idToken) {
+      const decodedToken = await firebaseAdmin.auth().verifyIdToken(idToken);
+      const uid = decodedToken.uid;
+      return res.status(200).send({ message: "Authentification réussie avec token", uid });
+    }
+
+    return res.status(400).send({ message: "Aucun token ou identifiants fournis" });
   } catch (error) {
-    res.status(401).send({ message: "Token invalide ou expiré", error: error.message });
+    res.status(401).send({ message: "Échec de l'authentification", error: error.message });
   }
 });
 
@@ -62,7 +71,7 @@ app.post("/signup", async (req, res) => {
 
 // Endpoint protégé
 app.get("/private", async (req, res) => {
-  const idToken = req.headers.authorization?.split("Bearer ")[1]; // Extraire le token du header
+  const idToken = req.headers.authorization?.split("Bearer ")[1];
 
   if (!idToken) {
     return res.status(401).send({ message: "Token manquant" });
