@@ -35,15 +35,34 @@ app.post("/login", async (req, res) => {
   const { idToken, email, password } = req.body;
 
   try {
+    let customToken;
+
     if (email && password) {
+        // Authentifier avec l'email et le mot de passe
         const userRecord = await firebaseAdmin.auth().getUserByEmail(email);
-        return res.status(200).send({ message: "Authentification réussie avec email et mot de passe", uid: userRecord.uid });
+        
+        // Générer un token personnalisé pour l'utilisateur
+        customToken = await firebaseAdmin.auth().createCustomToken(userRecord.uid);
+        return res.status(200).send({
+          message: "Authentification réussie avec email et mot de passe",
+          uid: userRecord.uid,
+          token: customToken
+        });
     }
-    
+
     if (idToken) {
+      // Vérifier le token d'identification Firebase
       const decodedToken = await firebaseAdmin.auth().verifyIdToken(idToken);
       const uid = decodedToken.uid;
-      return res.status(200).send({ message: "Authentification réussie avec token", uid });
+      
+      // Générer un token personnalisé pour l'utilisateur
+      customToken = await firebaseAdmin.auth().createCustomToken(uid);
+      
+      return res.status(200).send({
+        message: "Authentification réussie avec token",
+        uid: uid,
+        token: customToken
+      });
     }
 
     return res.status(400).send({ message: "Aucun token ou identifiants fournis" });
@@ -63,7 +82,15 @@ app.post("/signup", async (req, res) => {
       password: password,
     });
 
-    res.status(201).send({ message: "Utilisateur créé", uid: userRecord.uid });
+    // Générer un token personnalisé pour l'utilisateur créé
+    const customToken = await firebaseAdmin.auth().createCustomToken(userRecord.uid);
+
+    // Retourner la réponse avec le token personnalisé
+    res.status(201).send({
+      message: "Utilisateur créé",
+      uid: userRecord.uid,
+      token: customToken, // Token généré
+    });
   } catch (error) {
     res.status(400).send({ message: "Erreur lors de la création de l'utilisateur", error: error.message });
   }
