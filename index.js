@@ -11,12 +11,14 @@ dotenv.config();
 // Initialisation de Firebase Admin avec les clés de service depuis les variables d'environnement
 const serviceAccount = {
   type: "service_account",
-  apiKey: process.env.VITE_API_KEY,
-  authDomain: process.env.VITE_AUTH_DOMAIN,
-  projectId: process.env.VITE_PROJECT_ID,
-  storageBucket: process.env.VITE_STORAGE_BUCKET,
-  messagingSenderId: process.env.VITE_MESSAGING_SENDER_ID,
-  appId: process.env.VITE_APP_ID,
+  projectId: process.env.PROJECT_ID,
+  privateKey: process.env.PRIVATE_KEY.replace(/\\n/g, '\n'),  // Remplacer les \n par des sauts de ligne
+  clientEmail: process.env.CLIENT_EMAIL,
+  clientId: process.env.CLIENT_ID,
+  authUri: process.env.AUTH_URI,
+  tokenUri: process.env.TOKEN_URI,
+  authProviderX509CertUrl: process.env.AUTH_PROVIDER_X509_CERT_URL,
+  clientX509CertUrl: process.env.CLIENT_X509_CERT_URL,
 };
 
 firebaseAdmin.initializeApp({
@@ -71,11 +73,10 @@ app.get("/private", async (req, res) => {
     const uid = decodedToken.uid;
     res.status(200).send({ message: "Accès autorisé", uid });
   } catch (error) {
-    res.status(401).send({ message: "Token invalide", error: error.message });
+    res.status(401).send({ message: "Token invalide ou expiré", error: error.message });
   }
 });
 
-// Démarrer le serveur
 app.listen(port, () => {
-  console.log(`Identify Provider started.`);
+  console.log(`Le serveur écoute sur le port ${port}`);
 });
